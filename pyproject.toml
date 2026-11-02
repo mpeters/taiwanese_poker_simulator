@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "taiwanese-poker-simulator"
+version = "1.0.0"
+description = "Monte-Carlo simulator for finding the best split of a Taiwanese Poker hand."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+tps = "tps_sim.cli:main"
+
+[tool.setuptools]
+packages = ["tps_sim"]

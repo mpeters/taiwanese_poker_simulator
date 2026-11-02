@@ -38,7 +38,7 @@ WEIGHTS = (1, 2, 3)
 # Parallelism. Runs with more than ``PARALLEL_THRESHOLD`` simulations are split
 # across worker processes (each simulation is independent, so the work is
 # embarrassingly parallel). ``DEFAULT_WORKERS`` is the default process count.
-PARALLEL_THRESHOLD = 1000
+PARALLEL_THRESHOLD = 2500
 DEFAULT_WORKERS = 4
 
 # "Home run" bonus: awarded when a player beats an opponent on all three hands
@@ -448,7 +448,7 @@ def _run_parallel(
 def simulate(
     player_cards: Sequence[Card],
     opponents: int = 1,
-    simulations: int = 1000,
+    simulations: int = 2000,
     seed: Optional[int] = None,
     opponent_strategy: Strategy = blind_best_strategy,
     progress: Optional[Callable[[int, int], None]] = None,

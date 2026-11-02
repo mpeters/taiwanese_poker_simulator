@@ -45,7 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sims",
         type=int,
-        default=1000,
+        default=2000,
         help="Number of hands to simulate.",
     )
     parser.add_argument(

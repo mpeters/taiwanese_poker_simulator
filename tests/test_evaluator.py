@@ -112,3 +112,56 @@ def test_best_omaha_matches_bruteforce():
         for three in combinations(board, 3):
             expected = max(expected, eval5(two + three))
     assert best_omaha(hole, board) == expected
+
+
+def test_category_of_and_name_for_every_category():
+    from tps_sim.evaluator import CATEGORY_NAMES
+
+    representatives = {
+        0: "Ah Kd 9c 5s 2h",
+        1: "Ah Ad 9c 5s 2h",
+        2: "Ah Ad 9c 9s 2h",
+        3: "Ah Ad Ac 9s 2h",
+        4: "Ah Kd Qc Js Th",
+        5: "Ah Jh 9h 5h 2h",
+        6: "Ah Ad Ac 9s 9h",
+        7: "Ah Ad Ac As 9h",
+        8: "Ah Kh Qh Jh Th",
+    }
+    for expected_cat, text in representatives.items():
+        packed = eval5(cards(text))
+        assert category_of(packed) == expected_cat
+        assert category_name(packed) == CATEGORY_NAMES[expected_cat]
+
+
+def test_best_holdem_exactly_five_cards_delegates_to_eval5():
+    five = cards("AhKhQhJhTh")
+    assert best_holdem(five) == eval5(five)
+
+
+def test_best_holdem_seven_cards_matches_bruteforce():
+    pool = cards("AhKhQdJc9h5h2h")  # 7 cards (hole pair + board)
+    expected = max(eval5(c) for c in combinations(pool, 5))
+    assert best_holdem(pool) == expected
+
+
+def test_best_omaha_pair_matches_bruteforce():
+    from tps_sim.evaluator import best_omaha_pair
+
+    board = cards("Kh9h5h2h7d")
+    triples = list(combinations(board, 3))
+    two = tuple(cards("AhKh"))
+    expected = max(eval5(two + t) for t in triples)
+    assert best_omaha_pair(two, triples) == expected
+
+
+def test_full_house_beats_flush():
+    full_house = eval5(cards("Ah Ad Ac 9s 9h"))
+    flush = eval5(cards("Ah Jh 9h 5h 2h"))
+    assert full_house > flush
+
+
+def test_two_pair_tiebreak_by_kicker():
+    higher_kicker = eval5(cards("Ah Ad 9c 9s Kh"))
+    lower_kicker = eval5(cards("Ah Ad 9c 9s Qh"))
+    assert higher_kicker > lower_kicker

@@ -148,3 +148,148 @@ def test_custom_sample_count_runs():
         opponent_strategy=make_blind_strategy(3),
     )
     assert report.best.avg_score == report.ranked[0].avg_score
+
+
+# ---------------------------------------------------------------------------
+# Validation edge cases
+# ---------------------------------------------------------------------------
+
+def test_negative_opponents_rejected():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    with pytest.raises(ValueError, match="negative"):
+        simulate(hand, opponents=-1, simulations=10)
+
+
+def test_zero_simulations_rejected():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    with pytest.raises(ValueError, match="at least one simulation"):
+        simulate(hand, opponents=1, simulations=0)
+
+
+def test_zero_workers_rejected():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    with pytest.raises(ValueError, match="at least one worker"):
+        simulate(hand, opponents=1, simulations=10, workers=0)
+
+
+def test_zero_opponents_normalizes_without_division_error():
+    # With no opponents every matchup is empty, so all scores are exactly zero,
+    # and normalization must fall back to a divisor of 1 (no ZeroDivisionError).
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    report = simulate(hand, opponents=0, simulations=10, seed=1)
+    assert report.opponents == 0
+    assert len(report.ranked) == 105
+    for r in report.ranked:
+        assert r.avg_score == 0.0
+
+
+def test_max_opponents_allowed():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    report = simulate(hand, opponents=5, simulations=10, seed=1)
+    assert report.opponents == 5
+
+
+# ---------------------------------------------------------------------------
+# Progress reporting
+# ---------------------------------------------------------------------------
+
+def test_progress_callback_reaches_total():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    calls = []
+    simulate(
+        hand,
+        opponents=1,
+        simulations=15,
+        seed=1,
+        progress=lambda done, total: calls.append((done, total)),
+        workers=1,
+    )
+    assert calls, "progress callback was never invoked"
+    assert calls[-1] == (15, 15)
+    # done must be monotonically non-decreasing and never exceed the total.
+    for done, total in calls:
+        assert 0 < done <= total == 15
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def test_split_counts_distributes_evenly():
+    from tps_sim.simulator import _split_counts
+
+    assert _split_counts(10, 4) == [3, 3, 2, 2]
+    assert sum(_split_counts(10, 4)) == 10
+    assert sum(_split_counts(100, 7)) == 100
+
+
+def test_split_counts_more_chunks_than_work():
+    from tps_sim.simulator import _split_counts
+
+    # More requested chunks than simulations: capped, no empty chunks.
+    counts = _split_counts(3, 8)
+    assert counts == [1, 1, 1]
+    assert all(c > 0 for c in counts)
+
+
+def test_is_picklable():
+    from tps_sim.simulator import _is_picklable, blind_best_strategy
+
+    assert _is_picklable(blind_best_strategy) is True
+    assert _is_picklable(make_blind_strategy(5)) is True
+    # A lambda cannot be pickled and must be shipped nowhere.
+    assert _is_picklable(lambda *a: None) is False
+
+
+def test_describe_split_hands_maps_indices():
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    split = (0, (1, 2), (3, 4, 5, 6))
+    hands = describe_split_hands(hand, split)
+    assert hands["top"] == [hand[0]]
+    assert hands["middle"] == [hand[1], hand[2]]
+    assert hands["bottom"] == [hand[3], hand[4], hand[5], hand[6]]
+
+
+# ---------------------------------------------------------------------------
+# Parallel execution path
+# ---------------------------------------------------------------------------
+
+def test_parallel_path_runs(monkeypatch):
+    # Force the parallel branch without needing thousands of simulations by
+    # lowering the threshold, then confirm it produces a full ranked report.
+    import tps_sim.simulator as sim
+
+    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    report = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
+    assert len(report.ranked) == 105
+    assert report.simulations == 8
+
+
+def test_parallel_is_reproducible_for_fixed_workers(monkeypatch):
+    import tps_sim.simulator as sim
+
+    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    r1 = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
+    r2 = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
+    assert r1.best.split == r2.best.split
+    assert r1.best.avg_score == r2.best.avg_score
+
+
+def test_parallel_progress_reaches_total(monkeypatch):
+    import tps_sim.simulator as sim
+
+    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    calls = []
+    sim.simulate(
+        hand,
+        opponents=1,
+        simulations=8,
+        seed=3,
+        workers=2,
+        progress=lambda done, total: calls.append((done, total)),
+    )
+    assert calls
+    assert calls[-1] == (8, 8)

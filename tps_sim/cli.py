@@ -57,12 +57,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--workers",
         type=int,
-        default=DEFAULT_WORKERS,
+        default=None,
         metavar="N",
         help=(
-            f"Worker processes for parallel runs. Runs with more than "
-            f"{PARALLEL_THRESHOLD} simulations are split across this many "
-            f"processes; use 1 to force single-threaded execution."
+            "Worker processes for parallel runs. When omitted, runs with more "
+            f"than {PARALLEL_THRESHOLD} simulations auto-parallelize across "
+            f"{DEFAULT_WORKERS} processes. Any explicit value greater than 1 "
+            "forces parallelization regardless of the simulation count; use 1 "
+            "to force single-threaded execution."
         ),
     )
     parser.add_argument(
@@ -239,8 +241,18 @@ def _run(argv: Optional[List[str]] = None) -> int:
         parser.error("--sims must be at least 1.")
     if args.opponent_samples < 1:
         parser.error("--opponent-samples must be at least 1.")
-    if args.workers < 1:
+    if args.workers is not None and args.workers < 1:
         parser.error("--workers must be at least 1.")
+
+    # Mirror simulate()'s resolution of the "auto" worker count so the banner
+    # reflects what will actually happen: omitting --workers auto-parallelizes
+    # large runs; an explicit value overrides the threshold either way.
+    if args.workers is None:
+        effective_workers = (
+            DEFAULT_WORKERS if args.sims > PARALLEL_THRESHOLD else 1
+        )
+    else:
+        effective_workers = args.workers
 
     print("Taiwanese Poker Simulator")
     print(f"  Your hand : {format_cards(player_cards, symbols=True)}")
@@ -248,11 +260,11 @@ def _run(argv: Optional[List[str]] = None) -> int:
     print(f"  Simulations: {args.sims}")
     if args.seed is not None:
         print(f"  Seed      : {args.seed}")
-    parallel = args.sims > PARALLEL_THRESHOLD and args.workers > 1
+    parallel = effective_workers > 1
     if parallel:
-        print(f"  Workers   : {args.workers}")
+        print(f"  Workers   : {effective_workers}")
     print()
-    mode = f" across {args.workers} workers" if parallel else ""
+    mode = f" across {effective_workers} workers" if parallel else ""
     print(f"Running {args.sims} simulations against {args.opponents} "
           f"opponent(s){mode}...")
 

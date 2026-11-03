@@ -254,22 +254,20 @@ def test_describe_split_hands_maps_indices():
 # Parallel execution path
 # ---------------------------------------------------------------------------
 
-def test_parallel_path_runs(monkeypatch):
-    # Force the parallel branch without needing thousands of simulations by
-    # lowering the threshold, then confirm it produces a full ranked report.
+def test_parallel_path_runs():
+    # Any workers > 1 forces the parallel branch regardless of simulation count;
+    # confirm it produces a full ranked report.
     import tps_sim.simulator as sim
 
-    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
     hand = parse_hand("AcKdJd7h7s2c2d")
     report = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
     assert len(report.ranked) == 105
     assert report.simulations == 8
 
 
-def test_parallel_is_reproducible_for_fixed_workers(monkeypatch):
+def test_parallel_is_reproducible_for_fixed_workers():
     import tps_sim.simulator as sim
 
-    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
     hand = parse_hand("AcKdJd7h7s2c2d")
     r1 = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
     r2 = sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=2)
@@ -277,10 +275,9 @@ def test_parallel_is_reproducible_for_fixed_workers(monkeypatch):
     assert r1.best.avg_score == r2.best.avg_score
 
 
-def test_parallel_progress_reaches_total(monkeypatch):
+def test_parallel_progress_reaches_total():
     import tps_sim.simulator as sim
 
-    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
     hand = parse_hand("AcKdJd7h7s2c2d")
     calls = []
     sim.simulate(
@@ -293,3 +290,54 @@ def test_parallel_progress_reaches_total(monkeypatch):
     )
     assert calls
     assert calls[-1] == (8, 8)
+
+
+def test_auto_stays_single_threaded_below_threshold(monkeypatch):
+    # With workers unspecified, a small run must not spawn the parallel branch.
+    import tps_sim.simulator as sim
+
+    def boom(*args, **kwargs):  # pragma: no cover - should never run
+        raise AssertionError("parallel branch taken below threshold")
+
+    monkeypatch.setattr(sim, "_run_parallel", boom)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    report = sim.simulate(hand, opponents=1, simulations=8, seed=3)
+    assert report.simulations == 8
+
+
+def test_auto_parallelizes_above_threshold(monkeypatch):
+    # With workers unspecified, a run past the threshold auto-parallelizes using
+    # DEFAULT_WORKERS. Lower the threshold so the test stays fast.
+    import tps_sim.simulator as sim
+
+    seen = {}
+
+    real = sim._run_parallel
+
+    def spy(*args, **kwargs):
+        # Signature: (..., opponent_strategy, workers, progress)
+        seen["workers"] = args[6]
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(sim, "PARALLEL_THRESHOLD", 1)
+    monkeypatch.setattr(sim, "_run_parallel", spy)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    sim.simulate(hand, opponents=1, simulations=8, seed=3)
+    assert seen["workers"] == sim.DEFAULT_WORKERS
+
+
+def test_explicit_workers_override_threshold(monkeypatch):
+    # An explicit worker count parallelizes even when below the threshold.
+    import tps_sim.simulator as sim
+
+    seen = {}
+    real = sim._run_parallel
+
+    def spy(*args, **kwargs):
+        seen["workers"] = args[6]
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(sim, "_run_parallel", spy)
+    hand = parse_hand("AcKdJd7h7s2c2d")
+    sim.simulate(hand, opponents=1, simulations=8, seed=3, workers=3)
+    assert seen["workers"] == 3

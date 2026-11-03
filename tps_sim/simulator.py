@@ -35,9 +35,11 @@ from .evaluator import best_holdem, best_omaha_pair
 # Position weights: top, middle, bottom.
 WEIGHTS = (1, 2, 3)
 
-# Parallelism. Runs with more than ``PARALLEL_THRESHOLD`` simulations are split
-# across worker processes (each simulation is independent, so the work is
-# embarrassingly parallel). ``DEFAULT_WORKERS`` is the default process count.
+# Parallelism (each simulation is independent, so the work is embarrassingly
+# parallel). When the worker count is left to "auto", runs with more than
+# ``PARALLEL_THRESHOLD`` simulations are split across ``DEFAULT_WORKERS``
+# processes; an explicit worker count greater than 1 forces parallelization
+# regardless of the simulation count.
 PARALLEL_THRESHOLD = 2500
 DEFAULT_WORKERS = 4
 
@@ -452,7 +454,7 @@ def simulate(
     seed: Optional[int] = None,
     opponent_strategy: Strategy = blind_best_strategy,
     progress: Optional[Callable[[int, int], None]] = None,
-    workers: int = DEFAULT_WORKERS,
+    workers: Optional[int] = None,
 ) -> SimulationReport:
     """Run the Monte-Carlo simulation and return a ranked report.
 
@@ -472,18 +474,20 @@ def simulate(
     progress:
         Optional callback invoked as ``progress(done, total)``.
     workers:
-        Number of worker processes to use. Runs with more than
-        ``PARALLEL_THRESHOLD`` simulations are split across this many processes;
-        set to 1 to force single-threaded execution. Defaults to
-        ``DEFAULT_WORKERS``.
+        Number of worker processes to use. ``None`` (the default) auto-selects:
+        runs with more than ``PARALLEL_THRESHOLD`` simulations use
+        ``DEFAULT_WORKERS`` processes, smaller runs stay single-threaded. An
+        explicit value greater than 1 forces parallelization across that many
+        processes regardless of the simulation count; set to 1 to force
+        single-threaded execution.
 
     Determinism
     -----------
-    With a fixed ``seed`` a run is reproducible for a given ``workers`` count.
-    The single-threaded path (``workers <= 1`` or ``simulations <=
-    PARALLEL_THRESHOLD``) reproduces results bit-for-bit across runs; changing
-    ``workers`` changes how the RNG stream is partitioned, so parallel results
-    need not match single-threaded ones (but are self-consistent).
+    With a fixed ``seed`` a run is reproducible for a given effective ``workers``
+    count. The single-threaded path reproduces results bit-for-bit across runs;
+    changing the worker count changes how the RNG stream is partitioned, so
+    parallel results need not match single-threaded ones (but are
+    self-consistent).
     """
     player_cards = list(player_cards)
     if len(player_cards) != 7:
@@ -492,8 +496,17 @@ def simulate(
         raise ValueError("Opponents cannot be negative.")
     if simulations < 1:
         raise ValueError("Need at least one simulation.")
-    if workers < 1:
+    if workers is not None and workers < 1:
         raise ValueError("Need at least one worker.")
+
+    # Resolve the "auto" worker count: parallelize large runs by default, but let
+    # an explicit ``workers`` value override the threshold in either direction.
+    if workers is None:
+        effective_workers = (
+            DEFAULT_WORKERS if simulations > PARALLEL_THRESHOLD else 1
+        )
+    else:
+        effective_workers = workers
 
     needed = 7 + 10 + 7 * opponents  # player + two boards + opponents
     if needed > 52:
@@ -506,13 +519,10 @@ def simulate(
     player_set = set(player_cards)
     remaining_deck = [c for c in FULL_DECK if c not in player_set]
 
-    # Parallelize only when it is worth the process overhead and the strategy
-    # can be shipped to workers; otherwise fall back to a single in-process run.
-    if (
-        simulations > PARALLEL_THRESHOLD
-        and workers > 1
-        and _is_picklable(opponent_strategy)
-    ):
+    # Parallelize whenever more than one (effective) worker is requested and the
+    # strategy can be shipped to workers; otherwise fall back to a single
+    # in-process run.
+    if effective_workers > 1 and _is_picklable(opponent_strategy):
         totals = _run_parallel(
             player_cards,
             remaining_deck,
@@ -520,7 +530,7 @@ def simulate(
             simulations,
             seed,
             opponent_strategy,
-            workers,
+            effective_workers,
             progress,
         )
     else:

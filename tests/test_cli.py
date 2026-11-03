@@ -92,10 +92,9 @@ def test_missing_required_hand_exits():
 # Workers line in parallel mode
 # ---------------------------------------------------------------------------
 
-def test_workers_line_printed_in_parallel_mode(capsys, monkeypatch):
-    # Lower the CLI's parallel threshold so the "Workers" line prints without
-    # running thousands of real simulations (the sim itself stays small/fast).
-    monkeypatch.setattr(cli, "PARALLEL_THRESHOLD", 1)
+def test_workers_line_printed_in_parallel_mode(capsys):
+    # Any --workers > 1 engages parallel mode, so the "Workers" line prints even
+    # with a small simulation count.
     main(["--hand", "AcKdJd7h7s2c2d", "--sims", "10", "--workers", "2",
           "--seed", "1", "--quiet"])
     out = capsys.readouterr().out

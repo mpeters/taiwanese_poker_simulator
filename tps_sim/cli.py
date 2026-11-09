@@ -92,6 +92,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--top-details",
+        action="store_true",
+        help=(
+            "In the splits table, add columns breaking down each split's "
+            "average points by position (top, middle, bottom, home run), "
+            "not just for the best split."
+        ),
+    )
+    parser.add_argument(
         "--quiet",
         action="store_true",
         help="Suppress the progress indicator.",
@@ -163,7 +172,12 @@ def _format_hand_line(label: str, weight: int, cards, kind: str) -> str:
     return f"  {label:<7} (x{weight}, {kind:<7}): {cards_str}"
 
 
-def _print_report(report: SimulationReport, top_n: int, absolute: bool) -> None:
+def _print_report(
+    report: SimulationReport,
+    top_n: int,
+    absolute: bool,
+    top_details: bool = False,
+) -> None:
     best = report.best
     hands = describe_split_hands(report.player_cards, best.split)
 
@@ -197,17 +211,32 @@ def _print_report(report: SimulationReport, top_n: int, absolute: bool) -> None:
             )
             col = "gap"
         print(heading)
-        print(f"  {'#':>2}  {col:>8}   {'top':<4} {'middle':<7} {'bottom':<14}")
-        print("  " + "-" * 44)
+        header = (
+            f"  {'#':>2}  {col:>8}   "
+            f"{'top':<4} {'middle':<7} {'bottom':<14}"
+        )
+        if top_details:
+            header += (
+                f" {'pts:top':>8} {'pts:mid':>8} "
+                f"{'pts:bot':>8} {'pts:HR':>8}"
+            )
+        print(header)
+        print("  " + "-" * (len(header) - 2))
         for rank, result in enumerate(report.ranked[:top_n], start=1):
             h = describe_split_hands(report.player_cards, result.split)
             value = result.avg_score if absolute else result.avg_score - best_score
-            print(
+            row = (
                 f"  {rank:>2}  {value:>+8.3f}   "
                 f"{format_cards(h['top']):<4} "
                 f"{format_cards(h['middle']):<7} "
                 f"{format_cards(h['bottom']):<14}"
             )
+            if top_details:
+                row += (
+                    f" {result.avg_top:>+8.3f} {result.avg_middle:>+8.3f} "
+                    f"{result.avg_bottom:>+8.3f} {result.avg_bonus:>+8.3f}"
+                )
+            print(row)
     print()
 
 
@@ -280,7 +309,7 @@ def _run(argv: Optional[List[str]] = None) -> int:
         workers=args.workers,
     )
 
-    _print_report(report, args.top, args.absolute)
+    _print_report(report, args.top, args.absolute, args.top_details)
     return 0
 
 

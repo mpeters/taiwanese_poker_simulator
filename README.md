@@ -60,6 +60,7 @@ e.g. `Kh` = King of Hearts, `Ac` = Ace of Clubs, `Td` = Ten of Diamonds,
 | `--top`           | `5`     | How many top splits to list.                     |
 | `--opponent-samples` | `20`  | Boards each blind opponent samples to set its hand (higher = tougher, more accurate field, but slower). |
 | `--absolute`      | off     | Show each split's absolute score in the table instead of its gap from the best split. |
+| `--top-details`   | off     | Add columns to the splits table breaking down each split's average points by position (top, middle, bottom, home run). |
 | `--quiet`         | off     | Suppress the progress indicator.                 |
 
 ### Example output

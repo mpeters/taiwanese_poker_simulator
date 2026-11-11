@@ -196,7 +196,7 @@ def _print_report(
     print(f"    Top      : {best.avg_top:+.3f}")
     print(f"    Middle   : {best.avg_middle:+.3f}")
     print(f"    Bottom   : {best.avg_bottom:+.3f}")
-    print(f"    Home run : {best.avg_bonus:+.3f}")
+    print(f"    Home run : {best.homerun_pct:.2f}%")
 
     if top_n > 1:
         print()

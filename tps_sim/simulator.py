@@ -225,6 +225,8 @@ class SplitResult:
     avg_middle: float
     avg_bottom: float
     avg_bonus: float
+    # Percentage of opponent matchups the player swept (a "home run"), 0-100.
+    homerun_pct: float
 
 
 @dataclass
@@ -241,9 +243,13 @@ class SimulationReport:
         return self.ranked[0]
 
 
-# Totals accumulated by a simulation chunk: five parallel arrays indexed by
-# split (score, top, middle, bottom, home-run bonus).
-ChunkTotals = Tuple[List[int], List[int], List[int], List[int], List[int]]
+# Totals accumulated by a simulation chunk: six parallel arrays indexed by
+# split (score, top, middle, bottom, home-run bonus, home-run count). The
+# home-run count tracks how many opponent matchups the player swept, used to
+# report the home-run rate separately from the (signed) bonus points.
+ChunkTotals = Tuple[
+    List[int], List[int], List[int], List[int], List[int], List[int]
+]
 
 
 def _simulate_chunk(
@@ -274,6 +280,7 @@ def _simulate_chunk(
     total_mid = [0] * n_splits
     total_bot = [0] * n_splits
     total_bonus = [0] * n_splits
+    total_homeruns = [0] * n_splits
 
     w_top, w_mid, w_bot = WEIGHTS
 
@@ -311,7 +318,7 @@ def _simulate_chunk(
         for si, (top, mid, bottom) in enumerate(SPLITS):
             pt0, pm0, pb0 = p0.single[top], p0.pair[mid], p0.quad[bottom]
             pt1, pm1, pb1 = p1.single[top], p1.pair[mid], p1.quad[bottom]
-            s_top = s_mid = s_bot = bonus = 0
+            s_top = s_mid = s_bot = bonus = homeruns = 0
             for ov in opp_values:
                 (ot0, om0, ob0), (ot1, om1, ob1) = ov
                 ct0, cm0, cb0 = _cmp(pt0, ot0), _cmp(pm0, om0), _cmp(pb0, ob0)
@@ -321,12 +328,14 @@ def _simulate_chunk(
                 s_bot += cb0 + cb1
                 if ct0 == ct1 == cm0 == cm1 == cb0 == cb1 == 1:
                     bonus += HOME_RUN_BONUS  # player sweeps this opponent
+                    homeruns += 1
                 elif ct0 == ct1 == cm0 == cm1 == cb0 == cb1 == -1:
                     bonus -= HOME_RUN_BONUS  # opponent sweeps the player
             total_top[si] += s_top
             total_mid[si] += s_mid
             total_bot[si] += s_bot
             total_bonus[si] += bonus
+            total_homeruns[si] += homeruns
             total_score[si] += (
                 w_top * s_top + w_mid * s_mid + w_bot * s_bot + bonus
             )
@@ -334,7 +343,10 @@ def _simulate_chunk(
         if progress is not None:
             progress(progress_base + sim + 1, progress_total)
 
-    return total_score, total_top, total_mid, total_bot, total_bonus
+    return (
+        total_score, total_top, total_mid, total_bot, total_bonus,
+        total_homeruns,
+    )
 
 
 def _split_counts(total: int, n_chunks: int) -> List[int]:
@@ -352,7 +364,10 @@ def _finalize(
     simulations: int,
 ) -> SimulationReport:
     """Normalize summed totals into a ranked report."""
-    total_score, total_top, total_mid, total_bot, total_bonus = totals
+    (
+        total_score, total_top, total_mid, total_bot, total_bonus,
+        total_homeruns,
+    ) = totals
     w_top, w_mid, w_bot = WEIGHTS
 
     # Normalize per hand *and* per opponent, so scores are comparable across
@@ -366,6 +381,7 @@ def _finalize(
             avg_middle=w_mid * total_mid[si] / norm,
             avg_bottom=w_bot * total_bot[si] / norm,
             avg_bonus=total_bonus[si] / norm,
+            homerun_pct=100.0 * total_homeruns[si] / norm,
         )
         for si in range(len(SPLITS))
     ]
@@ -418,7 +434,7 @@ def _run_parallel(
     n_splits = len(SPLITS)
     totals: ChunkTotals = (
         [0] * n_splits, [0] * n_splits, [0] * n_splits,
-        [0] * n_splits, [0] * n_splits,
+        [0] * n_splits, [0] * n_splits, [0] * n_splits,
     )
 
     done = 0

@@ -61,7 +61,7 @@ def test_details_adds_position_columns(capsys):
 
     main(BASE + ["--details"])
     out = capsys.readouterr().out
-    for header in ("pts:top", "pts:mid", "pts:bot", "pts:HR"):
+    for header in ("pts:top", "pts:mid", "pts:bot", "%:HR"):
         assert header in out
 
 

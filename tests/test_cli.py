@@ -53,20 +53,20 @@ def test_seed_line_absent_without_seed(capsys):
     assert "Seed      :" not in out
 
 
-def test_top_details_adds_position_columns(capsys):
+def test_details_adds_position_columns(capsys):
     # Without the flag, the per-position header columns are absent.
     main(BASE)
     plain = capsys.readouterr().out
     assert "pts:top" not in plain
 
-    main(BASE + ["--top-details"])
+    main(BASE + ["--details"])
     out = capsys.readouterr().out
     for header in ("pts:top", "pts:mid", "pts:bot", "pts:HR"):
         assert header in out
 
 
-def test_top_details_works_with_absolute(capsys):
-    main(BASE + ["--top-details", "--absolute"])
+def test_details_works_with_absolute(capsys):
+    main(BASE + ["--details", "--absolute"])
     out = capsys.readouterr().out
     assert "by average score" in out
     assert "pts:top" in out

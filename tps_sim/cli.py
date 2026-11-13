@@ -92,7 +92,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--top-details",
+        "--details",
         action="store_true",
         help=(
             "In the splits table, add columns breaking down each split's "
@@ -176,7 +176,7 @@ def _print_report(
     report: SimulationReport,
     top_n: int,
     absolute: bool,
-    top_details: bool = False,
+    details: bool = False,
 ) -> None:
     best = report.best
     hands = describe_split_hands(report.player_cards, best.split)
@@ -216,7 +216,7 @@ def _print_report(
             f"  {'#':>2}  {col:>8}   "
             f"{'top':<4} {'middle':<7} {'bottom':<14}"
         )
-        if top_details:
+        if details:
             header += (
                 f" {'pts:top':>8} {'pts:mid':>8} "
                 f"{'pts:bot':>8} {'pts:HR':>8}"
@@ -232,7 +232,7 @@ def _print_report(
                 f"{format_cards(h['middle']):<7} "
                 f"{format_cards(h['bottom']):<14}"
             )
-            if top_details:
+            if details:
                 row += (
                     f" {result.avg_top:>+8.3f} {result.avg_middle:>+8.3f} "
                     f"{result.avg_bottom:>+8.3f} {result.avg_bonus:>+8.3f}"
@@ -310,7 +310,7 @@ def _run(argv: Optional[List[str]] = None) -> int:
         workers=args.workers,
     )
 
-    _print_report(report, args.top, args.absolute, args.top_details)
+    _print_report(report, args.top, args.absolute, args.details)
     return 0
 
 

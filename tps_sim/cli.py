@@ -219,7 +219,7 @@ def _print_report(
         if details:
             header += (
                 f" {'pts:top':>8} {'pts:mid':>8} "
-                f"{'pts:bot':>8} {'%:HR':>8}"
+                f"{'pts:bot':>8} {'%:HR':>8} {'%:GHR':>8}"
             )
         print(header)
         print("  " + "-" * (len(header) - 2))
@@ -235,7 +235,8 @@ def _print_report(
             if details:
                 row += (
                     f" {result.avg_top:>+8.3f} {result.avg_middle:>+8.3f} "
-                    f"{result.avg_bottom:>+8.3f} {result.homerun_pct:>7.2f}%"
+                    f"{result.avg_bottom:>+8.3f} {result.homerun_pct:>7.2f}% "
+                    f"{result.got_homerunned_pct:>7.2f}%"
                 )
             print(row)
     print()

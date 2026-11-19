@@ -40,10 +40,10 @@ def test_headline_always_absolute(capsys):
 
 
 def test_report_header_lists_inputs(capsys):
-    main(BASE)
+    main(BASE + ["--opponents", "2"])
     out = capsys.readouterr().out
     assert "Taiwanese Poker Simulator" in out
-    assert "Opponents : 1" in out
+    assert "Opponents : 2" in out
     assert "Seed      : 1" in out  # seed line printed only when a seed is given
 
 

@@ -39,13 +39,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--opponents",
         type=int,
-        default=1,
+        default=3,
         help=f"Number of opponents (1-{MAX_OPPONENTS}).",
     )
     parser.add_argument(
         "--sims",
         type=int,
-        default=2000,
+        default=3000,
         help="Number of hands to simulate.",
     )
     parser.add_argument(

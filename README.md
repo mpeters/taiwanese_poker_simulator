@@ -53,8 +53,8 @@ e.g. `Kh` = King of Hearts, `Ac` = Ace of Clubs, `Td` = Ten of Diamonds,
 | Option            | Default | Description                                      |
 |-------------------|---------|--------------------------------------------------|
 | `--hand`          | *req.*  | Your 7 cards, e.g. `"AcKdJd7h7s2c2d"`.           |
-| `--opponents`     | `1`     | Number of opponents (1–5; limited by the deck).  |
-| `--sims`          | `1000`  | Number of hands to simulate.                     |
+| `--opponents`     | `3`     | Number of opponents (1–5; limited by the deck).  |
+| `--sims`          | `3000`  | Number of hands to simulate.                     |
 | `--seed`          | –       | RNG seed for reproducible runs.                  |
 | `--workers`       | `4`     | Worker processes for parallel runs. Runs with more than 1000 simulations are split across this many processes; use `1` to force single-threaded. |
 | `--top`           | `5`     | How many top splits to list.                     |

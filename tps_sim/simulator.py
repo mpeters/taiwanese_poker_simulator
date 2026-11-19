@@ -474,8 +474,8 @@ def _run_parallel(
 
 def simulate(
     player_cards: Sequence[Card],
-    opponents: int = 1,
-    simulations: int = 2000,
+    opponents: int = 3,
+    simulations: int = 3000,
     seed: Optional[int] = None,
     opponent_strategy: Strategy = blind_best_strategy,
     progress: Optional[Callable[[int, int], None]] = None,

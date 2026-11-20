@@ -56,9 +56,9 @@ e.g. `Kh` = King of Hearts, `Ac` = Ace of Clubs, `Td` = Ten of Diamonds,
 | `--opponents`     | `3`     | Number of opponents (1–5; limited by the deck).  |
 | `--sims`          | `3000`  | Number of hands to simulate.                     |
 | `--seed`          | –       | RNG seed for reproducible runs.                  |
-| `--workers`       | `4`     | Worker processes for parallel runs. Runs with more than 1000 simulations are split across this many processes; use `1` to force single-threaded. |
+| `--workers`       | auto    | Worker processes for parallel runs. When omitted, runs with more than 2500 simulations are split across all available CPU cores; use `1` to force single-threaded. |
 | `--top`           | `5`     | How many top splits to list.                     |
-| `--opponent-samples` | `20`  | Boards each blind opponent samples to set its hand (higher = tougher, more accurate field, but slower). |
+| `--opponent-samples` | `8`   | Boards each blind opponent samples to set its hand (higher = tougher, more accurate field, but slower). |
 | `--absolute`      | off     | Show each split's absolute score in the table instead of its gap from the best split. |
 | `--details`       | off     | Add columns to the splits table breaking down each split's average points by position (top, middle, bottom, home run). |
 | `--quiet`         | off     | Suppress the progress indicator.                 |
@@ -100,7 +100,7 @@ instead. The headline always reports the best split's absolute average EV.
   the same way the optimizer does (maximize weighted made-hand strength) but,
   since it cannot see the real boards, it estimates each split's expected
   strength by averaging the evaluator over a handful of random boards
-  (`--opponent-samples`, default 20). It then commits to that split, which is
+  (`--opponent-samples`, default 8). It then commits to that split, which is
   scored on the actual boards. No hand-tuned preflop tables are used — the same
   evaluator drives everything. (The opponent strategy is a pluggable function in
   `tps_sim/simulator.py`; `make_blind_strategy` is the default and the

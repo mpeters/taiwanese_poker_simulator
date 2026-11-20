@@ -24,12 +24,55 @@ from .cards import Card
 # Ranks are all < 15, so category always dominates the comparison.
 
 
+# Memoization cache for :func:`eval5`, keyed on a cheap, order-independent
+# integer signature (see :func:`eval5`). The signature collapses the two things
+# the result depends on - the multiset of ranks and whether the hand is a flush -
+# so the number of distinct keys is tiny (a few thousand) even though the
+# simulator calls ``eval5`` tens of millions of times. The expensive
+# classification therefore runs only on the rare cache miss. Module-global so it
+# persists for a process's lifetime; worker processes build their own.
+_EVAL5_CACHE: dict = {}
+
+# Bit reserved in the signature to mark a flush. Rank counts occupy 3 bits each
+# at offsets ``3 * rank`` (rank <= 14, count <= 4), topping out well below bit 60,
+# so this bit never collides with the packed rank counts.
+_FLUSH_BIT = 1 << 60
+
+
 def eval5(cards: Sequence[Card]) -> int:
     """Return a comparable integer strength for exactly five cards.
 
-    Hot path: avoids :class:`collections.Counter` and keyed sorts in favour of
-    a single sort of five ranks plus a manual grouping, which is markedly faster
-    under the millions of calls the simulator makes.
+    Hot path: the result depends only on the *multiset* of ranks and whether the
+    five cards share a suit, so we build a cheap order-independent signature
+    (three bits per rank for its count, plus a flush bit) and memoize the full
+    classification on it. On the common cache hit this is a handful of shifts and
+    one dict lookup; the expensive grouping/packing in :func:`_eval5_full` runs
+    only on a miss, of which there are at most a few thousand per process.
+    """
+    c0, c1, c2, c3, c4 = cards
+    is_flush = c0[1] == c1[1] == c2[1] == c3[1] == c4[1]
+    # Order-independent, collision-free signature: sum of 1<<(3*rank) per card
+    # packs each rank's count into its own 3-bit field (counts are <= 4 < 8).
+    key = (
+        (1 << (3 * c0[0])) + (1 << (3 * c1[0])) + (1 << (3 * c2[0]))
+        + (1 << (3 * c3[0])) + (1 << (3 * c4[0]))
+    )
+    if is_flush:
+        key += _FLUSH_BIT
+    cached = _EVAL5_CACHE.get(key)
+    if cached is not None:
+        return cached
+    value = _eval5_full(cards)
+    _EVAL5_CACHE[key] = value
+    return value
+
+
+def _eval5_full(cards: Sequence[Card]) -> int:
+    """Classify exactly five cards into a packed strength value (cache miss path).
+
+    Avoids :class:`collections.Counter` and keyed sorts in favour of a single
+    sort of five ranks plus a manual grouping. Called only when :func:`eval5`
+    misses its cache, so it runs rarely relative to the simulator's call volume.
     """
     c0, c1, c2, c3, c4 = cards
     ranks = [c0[0], c1[0], c2[0], c3[0], c4[0]]

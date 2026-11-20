@@ -22,6 +22,7 @@ maximizing their own weighted made-hand strength for that hand's boards.
 
 from __future__ import annotations
 
+import os
 import pickle
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -41,7 +42,10 @@ WEIGHTS = (1, 2, 3)
 # processes; an explicit worker count greater than 1 forces parallelization
 # regardless of the simulation count.
 PARALLEL_THRESHOLD = 2500
-DEFAULT_WORKERS = 4
+# Auto worker count for large runs: use every available core. The work is CPU
+# bound and embarrassingly parallel, so this scales well up to the core count
+# (falls back to 4 if the count can't be determined).
+DEFAULT_WORKERS = os.cpu_count() or 4
 
 # "Home run" bonus: awarded when a player beats an opponent on all three hands
 # on both boards (all 6 matchups). The 12 base points become 20. Applied
@@ -107,7 +111,7 @@ def _position_values(hand: Sequence[Card], board: Sequence[Card]) -> HandBoardVa
 # strength when setting blind. Higher means stronger, more accurate opponents
 # (and slower runs). The best split is stable across this value; mainly the
 # score magnitude shifts as the field gets tougher.
-BLIND_SAMPLE_BOARDS = 20
+BLIND_SAMPLE_BOARDS = 8
 
 # A strategy chooses which split a player uses, given their hand, the per-board
 # value tables for the *actual* boards, and the run's RNG. A blind strategy must
